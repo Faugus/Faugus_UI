@@ -1,0 +1,21 @@
+## Interface: 16001, 11508, 11509, 20506, 38002, 40402, 50504, 120100
+## Title: Faugus UI
+## Notes: Interface tweaks: chat, raid frames, status bars, damage meter, auras, micro menu, tooltip, minimap, quest tracker, bags, error messages and nameplates
+## Author: Faugus
+## Version: 1.0
+## SavedVariables: FaugusUIDB
+## IconTexture: Interface\AddOns\Faugus_UI\icon
+
+Core.lua
+Chat.lua
+RaidFrames.lua
+StatusBars.lua
+DamageMeter.lua
+Auras.lua
+MicroMenu.lua
+Tooltip.lua
+Minimap.lua
+ObjectiveTracker.lua
+Bags.lua
+Errors.lua
+Nameplates.lua
