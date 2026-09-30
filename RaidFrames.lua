@@ -55,18 +55,19 @@ local function AnchorHealthRight(frame)
     frame.healthBar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -OnePixel(frame), frame.powerBarUsedHeight or 0)
 end
 
-local function HookHealthLoss(frame)
-    local loss = frame.TempMaxHealthLoss
-    if not loss or loss.faugusHooked then return end
-    loss.faugusHooked = true
-    hooksecurefunc(loss, "Update_MaxHealthLoss", function(_, fillPercent)
-        if not issecretvalue(fillPercent) and fillPercent == 0 then AnchorHealthRight(frame) end
-    end)
+local styled = setmetatable({}, { __mode = "k" })
+
+local function RestoreHealthRight()
+    for frame in pairs(styled) do
+        local loss = frame.TempMaxHealthLoss
+        local value = loss and loss:GetValue()
+        if not loss or (not issecretvalue(value) and value == 0) then AnchorHealthRight(frame) end
+    end
 end
 
 local function StyleBars(frame)
     for _, bar in ipairs({ frame.healthBar, frame.powerBar }) do
-        ns.OverlayBarTexture(bar, PlayerFrame.healthbar, ns.UNIT_BAR_CROP)
+        ns.OverlayBarTexture(bar, PlayerFrame.healthbar, ns.UNIT_BAR_CROP, true)
         if bar.faugusTexture then bar.faugusTexture:SetDrawLayer("BORDER", 7) end
     end
     local power, health = frame.powerBar, frame.healthBar
@@ -133,19 +134,19 @@ local function StylePartyFrame()
         local pixel = OnePixel(party)
         holder.top, holder.bottom = CreateEdge(holder, pixel), CreateEdge(holder, pixel)
         party.faugusEdges = holder
-        hooksecurefunc(party, "RefreshMembers", AnchorPartyEdges)
     end
     AnchorPartyEdges()
 end
 
 local function StyleFrame(frame)
     if not IsRaidFrame(frame) then return end
+    styled[frame] = true
     StyleBars(frame)
     LayoutRoleAndName(frame)
-    HookHealthLoss(frame)
     CreateThreatGlow(frame)
     UpdateThreatGlow(frame)
     RaiseSelection(frame)
+    AnchorPartyEdges()
 end
 
 ns.Module("RaidFrames", "Raid Frames", function()
@@ -154,5 +155,11 @@ ns.Module("RaidFrames", "Raid Frames", function()
     hooksecurefunc("CompactUnitFrame_UpdateAggroHighlight", UpdateThreatGlow)
     hooksecurefunc("CompactPartyFrame_Generate", StylePartyFrame)
     StylePartyFrame()
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("GROUP_ROSTER_UPDATE")
+    events:RegisterEvent("UNIT_MAX_HEALTH_MODIFIERS_CHANGED")
+    events:SetScript("OnEvent", function(_, event)
+        C_Timer.After(0, event == "GROUP_ROSTER_UPDATE" and AnchorPartyEdges or RestoreHealthRight)
+    end)
 end)
 

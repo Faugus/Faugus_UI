@@ -174,7 +174,23 @@ end
 
 ns.UNIT_BAR_CROP = { horizontal = 0.02, vertical = 0.1 }
 
-function ns.OverlayBarTexture(bar, source, crop)
+local function CopyBarColor(bar)
+    local tex = bar and bar.faugusTexture
+    if not tex then return end
+    local r, g, b = bar:GetStatusBarColor()
+    tex:SetVertexColor(r, g, b)
+end
+
+local unitColorHooked
+
+local function HookUnitBarColors()
+    if unitColorHooked then return end
+    unitColorHooked = true
+    hooksecurefunc("CompactUnitFrame_UpdateHealthColor", function(frame) CopyBarColor(frame.healthBar) end)
+    hooksecurefunc("CompactUnitFrame_UpdatePowerColor", function(frame) CopyBarColor(frame.powerBar) end)
+end
+
+function ns.OverlayBarTexture(bar, source, crop, globalColor)
     if bar.faugusTexture then return end
     local src = source and source:GetStatusBarTexture()
     local info = src and C_Texture.GetAtlasInfo(src:GetAtlas() or "")
@@ -190,8 +206,12 @@ function ns.OverlayBarTexture(bar, source, crop)
     tex:SetPoint("TOPLEFT", fill)
     tex:SetPoint("BOTTOMRIGHT", fill)
     tex:SetVertexColor(fill:GetVertexColor())
-    hooksecurefunc(fill, "SetVertexColor", function(_, r, g, b) tex:SetVertexColor(r, g, b) end)
-    hooksecurefunc(bar, "SetStatusBarColor", function(_, r, g, b) tex:SetVertexColor(r, g, b) end)
+    if globalColor then
+        HookUnitBarColors()
+    else
+        hooksecurefunc(fill, "SetVertexColor", function(_, r, g, b) tex:SetVertexColor(r, g, b) end)
+        hooksecurefunc(bar, "SetStatusBarColor", function(_, r, g, b) tex:SetVertexColor(r, g, b) end)
+    end
     fill:SetAlpha(0)
     bar.faugusTexture = tex
 end
@@ -367,7 +387,18 @@ local function CreateOptions()
         Settings.CreateCheckbox(category, setting, "Requires reloading the UI.")
     end
     Settings.RegisterAddOnCategory(category)
-    ns.WhenLoaded("SettingsPanel", "Blizzard_Settings", function() SettingsPanel:HookScript("OnHide", CheckPending) end)
+    ns.WhenLoaded("SettingsPanel", "Blizzard_Settings", function()
+        SettingsPanel:HookScript("OnHide", CheckPending)
+        local defaults = SettingsPanel:GetSettingsList().Header.DefaultsButton
+        local function HideDefaults()
+            if SettingsPanel:GetCurrentCategory() == category then defaults:Hide() end
+        end
+        defaults:HookScript("OnShow", HideDefaults)
+        EventRegistry:RegisterCallback("Settings.CategoryChanged", function()
+            defaults:Show()
+            HideDefaults()
+        end, defaults)
+    end)
 end
 
 local loader = CreateFrame("Frame")

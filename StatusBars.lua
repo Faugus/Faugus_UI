@@ -50,12 +50,9 @@ local function ToggleBar(_, button)
 end
 
 local function OverlapBars()
-    local main, second = MainStatusTrackingBarContainer, SecondaryStatusTrackingBarContainer
-    if second.faugusAnchoring then return end
-    second.faugusAnchoring = true
-    second:ClearAllPoints()
-    second:SetPoint("CENTER", main, "CENTER")
-    second.faugusAnchoring = false
+    local second = SecondaryStatusTrackingBarContainer
+    second:ClearAllPointsBase()
+    second:SetPointBase("CENTER", MainStatusTrackingBarContainer, "CENTER")
 end
 
 ns.Module("StatusBars", "Status Bars", function()
