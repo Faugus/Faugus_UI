@@ -39,7 +39,8 @@ local function ApplyLayout(unitFrame)
     unitFrame.name:SetFontHeight(setup.healthBarFontHeight - NAME_SHRINK)
     LayoutCastBar(unitFrame, setup)
     local auras = unitFrame.AurasFrame
-    if not unitFrame:IsShowOnlyName() then
+    local onlyName = unitFrame:IsShowOnlyName()
+    if not onlyName then
         unitFrame.RaidTargetFrame:ClearAllPoints()
         unitFrame.RaidTargetFrame:SetPoint("RIGHT", unitFrame.faugusRect, "LEFT", -ns.SCREEN_MARGIN, 0)
     end
@@ -48,12 +49,12 @@ local function ApplyLayout(unitFrame)
         auras.BuffListFrame:SetPoint("RIGHT", unitFrame.ClassificationFrame, "LEFT")
         for _, frame in ipairs({ auras.CrowdControlListFrame, auras.LossOfControlFrame }) do
             frame:SetScale(CC_SCALE)
-            frame:SetFrameLevel(unitFrame.PlayerLevelDiffFrame:GetFrameLevel() + 10)
+            frame:SetFrameLevel(level:GetFrameLevel() + 10)
             frame:ClearAllPoints()
             frame:SetPoint("LEFT", unitFrame.faugusRect, "RIGHT", ns.SCREEN_MARGIN / CC_SCALE, 0)
         end
     end
-    if unitFrame:IsShowOnlyName() or setup.unitNameAnchorStyle == NamePlateConstants.NAME_ANCHOR_STYLES.InsideHealthBar then return end
+    if onlyName or setup.unitNameAnchorStyle == NamePlateConstants.NAME_ANCHOR_STYLES.InsideHealthBar then return end
     local name = unitFrame.name
     name:ClearAllPoints()
     name:SetPoint("BOTTOMLEFT", container, "TOPLEFT", 0, setup.healthBarToNameAboveSpacing)
@@ -85,7 +86,7 @@ local function SkinPlate(unitFrame)
     bar.faugusHighlight = ns.CreateHighlight(bar, rect) or {}
     hooksecurefunc(bar, "UpdateSelectionBorder", UpdateSelection)
     UpdateSelection(bar)
-    ns.OverlayBarTexture(bar, PlayerFrame.healthbar, ns.UNIT_BAR_CROP)
+    ns.OverlayBarTexture(bar)
     local level = unitFrame.PlayerLevelDiffFrame
     if level then
         level.playerLevelDiffIcon:SetAlpha(0)

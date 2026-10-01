@@ -45,14 +45,14 @@ local function Restyle(entry)
     entry:SetClipsChildren(false)
     bar:ClearAllPoints()
     bar:SetPoint(entry:GetIconAttachmentAnchor())
-    local spacing = DamageMeter:GetBarSpacing()
     local target = entry:GetParent()
     local box = target and target:GetParent()
-    local up = box and box.faugusAtEnd and spacing or 0
+    local extend = DamageMeter:GetBarSpacing() - PixelUtil.GetNearestPixelSize(1, bar:GetEffectiveScale(), 1)
+    local up = box and box.faugusAtEnd and extend or 0
     bar:SetPoint("TOP", 0, up)
-    bar:SetPoint("BOTTOMRIGHT", -4, up - spacing)
-    entry:SetHitRectInsets(0, 0, -up, up - spacing)
-    ns.OverlayBarTexture(bar, PlayerFrame.healthbar)
+    bar:SetPoint("BOTTOMRIGHT", -4, up - extend)
+    entry:SetHitRectInsets(0, 0, -up, up - extend)
+    ns.OverlayBarTexture(bar)
     LayoutName(entry)
 end
 
@@ -220,13 +220,12 @@ local function AnchorHeader(window)
     local below = window.faugusHeaderBelow
     local details = sourceWindow:IsShown() and sourceWindow.faugusRect
     if details and window.faugusDetailsBelow ~= below then details = nil end
+    local ref = details or body
     header:ClearAllPoints()
     if below then
-        local ref = details or body
         header:SetPoint("TOPLEFT", ref, "BOTTOMLEFT", 0, -BODY_GAP)
         header:SetPoint("TOPRIGHT", ref, "BOTTOMRIGHT", 0, -BODY_GAP)
     else
-        local ref = details or body
         header:SetPoint("BOTTOMLEFT", ref, "TOPLEFT", 0, BODY_GAP)
         header:SetPoint("BOTTOMRIGHT", ref, "TOPRIGHT", 0, BODY_GAP)
     end
@@ -254,11 +253,12 @@ local function FitBody(window)
     local body, scrollBox, header = window.faugusBodyRect, window:GetScrollBox(), window:GetHeader()
     local headerBottom, windowBottom = header:GetBottom(), window:GetBottom()
     if not (body and headerBottom and windowBottom) or issecretvalue(headerBottom) or issecretvalue(windowBottom) then return end
+    local gap = PixelUtil.GetNearestPixelSize(1, window:GetEffectiveScale(), 1)
     local stride = window:GetBarHeight() + window:GetBarSpacing()
     local available = headerBottom - BAR_TOP_GAP - windowBottom - LIST_BOTTOM
     if stride <= 0 or available <= 0 then return end
-    local rows = math.max(math.floor(available / stride), 1)
-    local leftover = available - rows * stride
+    local rows = math.max(math.floor((available + gap) / stride), 1)
+    local leftover = available + gap - rows * stride
     local anchor = DamageMeter:GetPoint(1)
     local trimTop = anchor and anchor:find("BOTTOM") ~= nil
     local offsets = {
@@ -364,14 +364,12 @@ local function HookWindow(window)
     window.faugusHooked = true
     local sourceWindow = window:GetSourceWindow()
     hooksecurefunc(sourceWindow, "AnchorToSessionWindow", PlaceSourceWindow)
-    sourceWindow:HookScript("OnShow", function()
+    local function OnDetailsToggled()
         AnchorHeader(window)
         UpdateHeader(window)
-    end)
-    sourceWindow:HookScript("OnHide", function()
-        AnchorHeader(window)
-        UpdateHeader(window)
-    end)
+    end
+    sourceWindow:HookScript("OnShow", OnDetailsToggled)
+    sourceWindow:HookScript("OnHide", OnDetailsToggled)
     SkinWindow(window)
     window:HookScript("OnShow", SkinWindow)
     window:HookScript("OnDragStop", UpdateHeaderSide)
@@ -493,14 +491,13 @@ ns.Module("DamageMeter", "Damage Meter", function()
             end)
         end
         for _, method in ipairs({ "EnterEditMode", "ExitEditMode" }) do
-            hooksecurefunc(EditModeManagerFrame, method, UpdateHeaders)
-            hooksecurefunc(EditModeManagerFrame, method, FitLater)
+            hooksecurefunc(EditModeManagerFrame, method, function()
+                UpdateHeaders()
+                FitLater()
+            end)
         end
         hooksecurefunc(DamageMeter, "SetupSessionWindow", function(_, _, windowData)
             if windowData.sessionWindow then HookWindow(windowData.sessionWindow) end
         end)
     end)
 end)
-
-
-

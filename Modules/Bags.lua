@@ -7,7 +7,7 @@ local spacers = {}
 
 local function HideExtendedSlots(frame)
     for _, button in frame:EnumerateValidItems() do
-        if button and button:IsExtended() ~= (button.faugusExtended or false) then
+        if button:IsExtended() ~= (button.faugusExtended or false) then
             button.faugusExtended = button:IsExtended()
             SetFrameAlpha(button, button.faugusExtended and 0 or 1)
             if button.extendedFrame then button.extendedFrame:EnableMouse(not button.faugusExtended) end
@@ -26,7 +26,7 @@ local function AlignSearch(frame)
     if search.anchorBag ~= frame or InputUtil.IsGamepadUIEnabled() or not frame:GetTop() then return end
     local left, right, top
     for _, button in frame:EnumerateValidItems() do
-        if button and not button:IsExtended() and button:GetLeft() then
+        if not button:IsExtended() and button:GetLeft() then
             left = math.min(left or button:GetLeft(), button:GetLeft())
             right = math.max(right or button:GetRight(), button:GetRight())
             top = math.max(top or button:GetTop(), button:GetTop())
@@ -56,7 +56,7 @@ local function LayoutItems(frame)
     if InputUtil.IsGamepadUIEnabled() then return end
     local items = {}
     for _, button in frame:EnumerateValidItems() do
-        if button and not button:IsExtended() then
+        if not button:IsExtended() then
             if InCombatLockdown() and button:IsProtected() then return end
             items[#items + 1] = button
         end

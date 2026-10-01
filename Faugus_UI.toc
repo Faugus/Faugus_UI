@@ -4,18 +4,18 @@
 ## Author: Faugus
 ## Version: 1.0
 ## SavedVariables: FaugusUIDB
-## IconTexture: Interface\AddOns\Faugus_UI\icon
+## IconTexture: Interface\AddOns\Faugus_UI\Media\icon
 
 Core.lua
-Chat.lua
-RaidFrames.lua
-StatusBars.lua
-DamageMeter.lua
-Auras.lua
-MicroMenu.lua
-Tooltip.lua
-Minimap.lua
-ObjectiveTracker.lua
-Bags.lua
-Errors.lua
-Nameplates.lua
+Modules\Chat.lua
+Modules\RaidFrames.lua
+Modules\StatusBars.lua
+Modules\DamageMeter.lua
+Modules\Auras.lua
+Modules\MicroMenu.lua
+Modules\Tooltip.lua
+Modules\Minimap.lua
+Modules\ObjectiveTracker.lua
+Modules\Bags.lua
+Modules\Errors.lua
+Modules\Nameplates.lua

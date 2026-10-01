@@ -46,17 +46,21 @@ local function GetButtonTexture(tex, ref)
     }
 end
 
-local function GetCornerBase(info)
-    return math.floor(math.min(info.w, info.h) * 0.3) * info.scale
+local function GetCornerSlice(info)
+    return math.floor(math.min(info.w, info.h) * 0.3)
 end
 
-local function SliceTexture(owner, rect, info, layer, sublevel, withCenter, list, shrinkBase)
+local function GetCornerBase(info)
+    return GetCornerSlice(info) * info.scale
+end
+
+local function SliceTexture(owner, rect, info, layer, sublevel, withCenter, list, shrinkBase, fullThickness)
     local anchor = CreateFrame("Frame", nil, rect)
-    local m = math.floor(math.min(info.w, info.h) * 0.3)
-    local base = GetCornerBase(info)
+    local m = GetCornerSlice(info)
+    local base = m * info.scale
     local mu, mv = (info.r - info.l) * m / info.w, (info.b - info.t) * m / info.h
-    local us = { info.l, info.l + mu, info.r - mu, info.r }
-    local vs = { info.t, info.t + mv, info.b - mv, info.b }
+    local us = { info.l, info.l + mu, info.r - mu }
+    local vs = { info.t, info.t + mv, info.b - mv }
     local pieces = {}
     for row = 1, 3 do
         for col = 1, 3 do
@@ -65,44 +69,56 @@ local function SliceTexture(owner, rect, info, layer, sublevel, withCenter, list
             if x ~= "" or y ~= "" or withCenter then
                 local tex = owner:CreateTexture(nil, layer, nil, sublevel)
                 tex:SetTexture(info.file)
-                local u1, u2 = us[col], us[col + 1]
-                local v1, v2 = vs[row], vs[row + 1]
-                if col == 3 then u1, u2 = us[2], us[1] end
-                if row == 3 then v1, v2 = vs[2], vs[1] end
-                tex:SetTexCoord(u1, u2, v1, v2)
-                pieces[#pieces + 1] = { tex = tex, x = x, y = y }
+                pieces[#pieces + 1] = { tex = tex, x = x, y = y, col = col, row = row }
                 list[#list + 1] = tex
             end
         end
     end
 
-    local k = 1
+    local function Coords(list, index, fraction)
+        if index == 2 then return list[2], list[3] end
+        local inner = list[1] + (list[2] - list[1]) * fraction
+        if index == 1 then return list[1], inner end
+        return inner, list[1]
+    end
+
+    local k, sw, sh = 1, base, base
     local function Layout()
         local w, h = rect:GetSize()
-        if not (issecretvalue(w) or issecretvalue(h)) and w > 0 and h > 0 then
-            k = math.min(1, w / (2 * (shrinkBase + 1)), h / (2 * (shrinkBase + 1)))
+        local valid = not (issecretvalue(w) or issecretvalue(h)) and w > 0 and h > 0
+        if fullThickness then
+            if valid then
+                sw = math.min(base, (w + 2 * info.left) / 2)
+                sh = math.min(base, (h + 2 * info.top) / 2)
+            end
+        else
+            if valid then k = math.min(1, w / (2 * (shrinkBase + 1)), h / (2 * (shrinkBase + 1))) end
+            sw, sh = base * k, base * k
         end
-        local size = base * k
+        local fx, fy = fullThickness and sw / base or 1, fullThickness and sh / base or 1
         anchor:ClearAllPoints()
         anchor:SetPoint("TOPLEFT", rect, "TOPLEFT", -info.left * k, info.top * k)
         anchor:SetPoint("BOTTOMRIGHT", rect, "BOTTOMRIGHT", info.left * k, -info.top * k)
         for _, p in ipairs(pieces) do
             local tex, x, y = p.tex, p.x, p.y
+            local u1, u2 = Coords(us, p.col, fx)
+            local v1, v2 = Coords(vs, p.row, fy)
+            tex:SetTexCoord(u1, u2, v1, v2)
             tex:ClearAllPoints()
             if x ~= "" and y ~= "" then
-                tex:SetSize(size, size)
+                tex:SetSize(sw, sh)
                 tex:SetPoint(y .. x, anchor)
             elseif y ~= "" then
-                tex:SetHeight(size)
-                tex:SetPoint(y .. "LEFT", anchor, y .. "LEFT", size, 0)
-                tex:SetPoint(y .. "RIGHT", anchor, y .. "RIGHT", -size, 0)
+                tex:SetHeight(sh)
+                tex:SetPoint(y .. "LEFT", anchor, y .. "LEFT", sw, 0)
+                tex:SetPoint(y .. "RIGHT", anchor, y .. "RIGHT", -sw, 0)
             elseif x ~= "" then
-                tex:SetWidth(size)
-                tex:SetPoint("TOP" .. x, anchor, "TOP" .. x, 0, -size)
-                tex:SetPoint("BOTTOM" .. x, anchor, "BOTTOM" .. x, 0, size)
+                tex:SetWidth(sw)
+                tex:SetPoint("TOP" .. x, anchor, "TOP" .. x, 0, -sh)
+                tex:SetPoint("BOTTOM" .. x, anchor, "BOTTOM" .. x, 0, sh)
             else
-                tex:SetPoint("TOPLEFT", anchor, "TOPLEFT", size, -size)
-                tex:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -size, size)
+                tex:SetPoint("TOPLEFT", anchor, "TOPLEFT", sw, -sh)
+                tex:SetPoint("BOTTOMRIGHT", anchor, "BOTTOMRIGHT", -sw, sh)
             end
         end
     end
@@ -110,31 +126,27 @@ local function SliceTexture(owner, rect, info, layer, sublevel, withCenter, list
     Layout()
 end
 
-function ns.CreateSkin(owner, rect, borderOwner, borderOnly)
-    local btn = ActionButton1
-    local frame = GetButtonTexture(btn and btn:GetNormalTexture(), owner)
-    local slot = GetButtonTexture(btn and btn.SlotBackground, owner)
+function ns.CreateSkin(owner, rect, borderOwner, borderOnly, fullThickness)
+    local frame = GetButtonTexture(ActionButton1:GetNormalTexture(), owner)
+    local slot = GetButtonTexture(ActionButton1.SlotBackground, owner)
     if not (frame and slot) then return end
-    local textures, shade = {}, {}
+    local textures = {}
     local shrinkBase = GetCornerBase(frame)
     if not borderOnly then
-        SliceTexture(owner, rect, slot, "BACKGROUND", -8, true, textures, shrinkBase)
-        SliceTexture(owner, rect, slot, "BACKGROUND", -7, true, shade, shrinkBase)
+        SliceTexture(owner, rect, slot, "BACKGROUND", -8, true, textures, shrinkBase, fullThickness)
+        local first = #textures + 1
+        SliceTexture(owner, rect, slot, "BACKGROUND", -7, true, textures, shrinkBase, fullThickness)
+        for i = first, #textures do textures[i]:SetVertexColor(0, 0, 0) end
     end
-    for _, tex in ipairs(shade) do
-        tex:SetVertexColor(0, 0, 0)
-        textures[#textures + 1] = tex
-    end
-    SliceTexture(borderOwner or owner, rect, frame, "BORDER", -8, false, textures, shrinkBase)
+    SliceTexture(borderOwner or owner, rect, frame, "BORDER", -8, false, textures, shrinkBase, fullThickness)
     local skin = {}
     for _, tex in ipairs(textures) do skin[tex] = true end
     return skin
 end
 
 function ns.CreateHighlight(owner, rect)
-    local btn = ActionButton1
-    local frame = GetButtonTexture(btn and btn:GetNormalTexture(), owner)
-    local checked = GetButtonTexture(btn and btn:GetCheckedTexture(), owner)
+    local frame = GetButtonTexture(ActionButton1:GetNormalTexture(), owner)
+    local checked = GetButtonTexture(ActionButton1:GetCheckedTexture(), owner)
     if not (frame and checked) then return end
     local textures = {}
     SliceTexture(owner, rect, checked, "OVERLAY", 7, false, textures, GetCornerBase(frame))
@@ -148,8 +160,7 @@ function ns.SetSkinAlpha(skin, alpha)
 end
 
 function ns.GetSkinMinSize(owner)
-    local btn = ActionButton1
-    local frame = GetButtonTexture(btn and btn:GetNormalTexture(), owner)
+    local frame = GetButtonTexture(ActionButton1:GetNormalTexture(), owner)
     return frame and 2 * (GetCornerBase(frame) + 1)
 end
 
@@ -172,7 +183,7 @@ function ns.SetGoldIcon(texture, atlas, owner, hover)
     glow:SetAlpha(hover and ICON_HOVER_BRIGHTNESS or ICON_BRIGHTNESS)
 end
 
-ns.UNIT_BAR_CROP = { horizontal = 0.02, vertical = 0.1 }
+local BAR_CROP_X, BAR_CROP_Y = 0.02, 0.1
 
 local function CopyBarColor(bar)
     local tex = bar and bar.faugusTexture
@@ -190,25 +201,24 @@ local function HookUnitBarColors()
     hooksecurefunc("CompactUnitFrame_UpdatePowerColor", function(frame) CopyBarColor(frame.powerBar) end)
 end
 
-function ns.OverlayBarTexture(bar, source, crop, globalColor)
+function ns.OverlayBarTexture(bar, colorMode)
     if bar.faugusTexture then return end
-    local src = source and source:GetStatusBarTexture()
-    local info = src and C_Texture.GetAtlasInfo(src:GetAtlas() or "")
+    local info = C_Texture.GetAtlasInfo(PlayerFrame.healthbar:GetStatusBarTexture():GetAtlas() or "")
     if not info then return end
     local fill = bar:GetStatusBarTexture()
     local width = info.rightTexCoord - info.leftTexCoord
     local tex = bar:CreateTexture(nil, "ARTWORK", nil, 1)
     tex:SetTexture(info.file)
-    local left = width * (crop and crop.horizontal or 0.35)
-    local top = (info.bottomTexCoord - info.topTexCoord) * (crop and crop.vertical or 0)
+    local left = width * BAR_CROP_X
+    local top = (info.bottomTexCoord - info.topTexCoord) * BAR_CROP_Y
     tex:SetTexCoord(info.leftTexCoord + left, info.rightTexCoord - left, info.topTexCoord + top, info.bottomTexCoord - top)
     tex:SetDesaturated(true)
     tex:SetPoint("TOPLEFT", fill)
     tex:SetPoint("BOTTOMRIGHT", fill)
     tex:SetVertexColor(fill:GetVertexColor())
-    if globalColor then
+    if colorMode == "unit" then
         HookUnitBarColors()
-    else
+    elseif colorMode ~= "none" then
         hooksecurefunc(fill, "SetVertexColor", function(_, r, g, b) tex:SetVertexColor(r, g, b) end)
         hooksecurefunc(bar, "SetStatusBarColor", function(_, r, g, b) tex:SetVertexColor(r, g, b) end)
     end
@@ -363,7 +373,7 @@ local function ShowReloadDialog()
         local text = dialog:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
         text:SetPoint("TOP", 0, -16)
         text:SetText("Faugus UI changes require reloading the UI.")
-        local reload = CreateButton(dialog, RELOADUI or "Reload UI", ReloadUI)
+        local reload = CreateButton(dialog, RELOADUI, ReloadUI)
         reload:SetPoint("BOTTOMRIGHT", dialog, "BOTTOM", -4, 14)
         local later = CreateButton(dialog, "Later", function() dialog:Hide() end)
         later:SetPoint("BOTTOMLEFT", dialog, "BOTTOM", 4, 14)
@@ -413,4 +423,3 @@ loader:SetScript("OnEvent", function(self, _, name)
     end
     CreateOptions()
 end)
-

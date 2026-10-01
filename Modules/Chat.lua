@@ -7,6 +7,7 @@ local HideForever, HideRegionTextures = ns.HideForever, ns.HideRegionTextures
 local CreateSkin, SetSkinAlpha = ns.CreateSkin, ns.SetSkinAlpha
 
 local ready = false
+local SetupChat
 
 local buttons = {
     "QuickJoinToastButton",
@@ -162,6 +163,13 @@ local function UpdateTabSkin(chat)
     local tab = _G[chat:GetName() .. "Tab"]
     local text = tab and (tab.Text or tab:GetFontString())
     if not text then return false end
+    if not tab.faugusSkin and not tab:IsShown() then
+        if not tab.faugusShowHooked then
+            tab.faugusShowHooked = true
+            tab:HookScript("OnShow", function() SetupChat(chat) end)
+        end
+        return true
+    end
     if not tab.faugusSkin then
         tab.faugusRect = tab.faugusRect or CreateFrame("Frame", nil, tab)
         local skin = CreateSkin(tab, tab.faugusRect)
@@ -236,6 +244,11 @@ end
 
 local OVERFLOW_ARROW = "common-dropdown-c-button-hover-arrow"
 
+local function RefreshArrow(button)
+    button:SetAlpha(1)
+    ns.SetGoldIcon(button:GetNormalTexture(), OVERFLOW_ARROW, button, button:IsMouseOver())
+end
+
 local function UpdateOverflowButton()
     local button = GENERAL_CHAT_DOCK.overflowButton or GeneralDockManagerOverflowButton
     local rect = _G[GENERAL_CHAT_DOCK.primary:GetName() .. "Tab"].faugusRect
@@ -251,13 +264,12 @@ local function UpdateOverflowButton()
         hooksecurefunc(button, "SetPoint", function(self)
             if not self.faugusPlacing then UpdateOverflowButton() end
         end)
-        local function RefreshArrow(self)
-            self:SetAlpha(1)
-            ns.SetGoldIcon(self:GetNormalTexture(), OVERFLOW_ARROW, self, self:IsMouseOver())
-        end
         button:HookScript("OnEnter", RefreshArrow)
         button:HookScript("OnLeave", RefreshArrow)
         button:GetHighlightTexture():SetTexture(nil)
+        for _, tex in ipairs({ button:GetPushedTexture(), button:GetDisabledTexture() }) do
+            tex:SetAlpha(0)
+        end
     end
     button.faugusPlacing = true
     button:ClearAllPoints()
@@ -268,11 +280,7 @@ local function UpdateOverflowButton()
     local arrow = button:GetNormalTexture()
     arrow:ClearAllPoints()
     arrow:SetPoint("CENTER", button.faugusRect)
-    button:SetAlpha(1)
-    ns.SetGoldIcon(arrow, OVERFLOW_ARROW, button, button:IsMouseOver())
-    for _, tex in ipairs({ button:GetPushedTexture(), button:GetDisabledTexture() }) do
-        tex:SetAlpha(0)
-    end
+    RefreshArrow(button)
     return true
 end
 
@@ -306,11 +314,11 @@ local function UpdateEditBoxSkin(chat)
         edit:HookScript("OnShow", SkinEditBox)
         PlaceEditBox(edit, chat)
     end
-    return edit.faugusSkin or not edit:IsShown() or SkinEditBox(edit)
+    return not edit:IsShown() or SkinEditBox(edit)
 end
 
 local function FormatMessage(msg)
-    if type(msg) ~= "string" or (issecretvalue and issecretvalue(msg)) then return msg end
+    if type(msg) ~= "string" or issecretvalue(msg) then return msg end
     msg = msg:gsub("|Hchannel:(.-)|h%[(.-)%]|h", function(link, name)
         name = name:gsub("^%d+%.%s*", ""):gsub("%s+%-%s+.*$", "")
         return "|Hchannel:" .. link .. "|h[" .. name .. "]|h"
@@ -338,7 +346,7 @@ local function PlaceScrollButton(chat)
     button:SetPoint("BOTTOMRIGHT", background, "BOTTOMRIGHT", -2.5, border:GetBottom() + gap - backgroundBottom)
 end
 
-local function SetupChat(chat)
+function SetupChat(chat)
     HideForever(_G[chat:GetName() .. "ButtonFrame"])
     HookMessages(chat)
     ns.HideScrollArrows(chat.ScrollBar)

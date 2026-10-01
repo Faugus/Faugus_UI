@@ -5,7 +5,7 @@ local GAP = 1
 local AURA_SIZE = 30
 
 local function SkinAura(button)
-    if button.faugusSkin or button.isAuraAnchor or not (button.Icon and button.Icon:IsObjectType("Texture")) then return end
+    if button.isAuraAnchor or not (button.Icon and button.Icon:IsObjectType("Texture")) then return end
     local rect = CreateFrame("Frame", nil, button)
     rect:SetPoint("CENTER", button.Icon)
     local skin = ns.CreateSkin(button, rect, nil, true)

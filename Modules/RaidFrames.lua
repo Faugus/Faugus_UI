@@ -4,7 +4,7 @@ local THREAT_ALPHA = 1
 local NAME_RAISE = 1
 local ROLE_LEFT = 1
 local ROLE_TOP = 2
-local GRADIENT = "Interface\\AddOns\\Faugus_UI\\gradient"
+local GRADIENT = "Interface\\AddOns\\Faugus_UI\\Media\\gradient"
 
 local function OnePixel(frame)
     return PixelUtil.GetNearestPixelSize(1, frame:GetEffectiveScale(), 1)
@@ -67,7 +67,7 @@ end
 
 local function StyleBars(frame)
     for _, bar in ipairs({ frame.healthBar, frame.powerBar }) do
-        ns.OverlayBarTexture(bar, PlayerFrame.healthbar, ns.UNIT_BAR_CROP, true)
+        ns.OverlayBarTexture(bar, "unit")
         if bar.faugusTexture then bar.faugusTexture:SetDrawLayer("BORDER", 7) end
     end
     local power, health = frame.powerBar, frame.healthBar
